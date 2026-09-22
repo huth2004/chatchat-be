@@ -9,6 +9,7 @@ const users: UserInfrastructure[] = [
   {
     id: '0',
     username: 'admin',
+    avatarUrl: null,
     role: 'admin',
     password: '$2a$10$XAGtJD/pfjYR1f9/4p6I.ODHsWJs/4HPSBqgfr3n4qYUxrW6egAXa',
     createdAt: new Date(),
@@ -19,6 +20,7 @@ const users: UserInfrastructure[] = [
   {
     id: '1',
     username: 'user',
+    avatarUrl: null,
     role: 'user',
     password: '$2a$10$XAGtJD/pfjYR1f9/4p6I.ODHsWJs/4HPSBqgfr3n4qYUxrW6egAXa',
     createdAt: new Date(),
@@ -117,6 +119,13 @@ export class UserImplRepository implements UserRepository {
         this.userMapper.toDomainEntity(user),
       );
       resolve(domainUsers);
+    });
+  }
+
+  isExist(userIds: string[]): Promise<boolean> {
+    return new Promise((resolve) => {
+      const existingUsers = users.filter((user) => userIds.includes(user.id));
+      resolve(existingUsers.length === userIds.length);
     });
   }
 }

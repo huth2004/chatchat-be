@@ -24,7 +24,7 @@ export class GetProfileUseCase {
     return {
       id: user.id,
       username: user.username,
-      avatarUrl: null,
+      avatarUrl: user.avatarUrl,
     };
   }
 }

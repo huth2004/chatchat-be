@@ -18,7 +18,7 @@ import {
 } from '@/common/auth/services/ws-auth.service';
 import { WsAuthGuard } from '@/common/auth/guards/ws-auth.guard';
 
-import { GetDirectConversationUseCase } from '@/domains/chat/usecase/get-direct-conversation.usecase';
+import { GetConversationUseCase } from '@/domains/chat/usecase/get-conversation.usecase';
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -36,7 +36,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly wsAuthService: WsAuthService,
-    private readonly getDirectConversationUseCase: GetDirectConversationUseCase,
+    private readonly getConversationUseCase: GetConversationUseCase,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -76,7 +76,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      await this.getDirectConversationUseCase.execute({
+      await this.getConversationUseCase.execute({
         userId,
         conversationId,
       });
@@ -136,16 +136,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('conversation.created')
   handleConversationCreatedEvent(payload: {
     conversationId: string;
-    userId: string;
-    partnerId: string;
+    userIds: string[];
   }) {
-    const { conversationId, userId, partnerId } = payload;
+    const { conversationId, userIds } = payload;
 
-    const userRoomId = this.getUserRoom(userId);
-    const partnerRoomId = this.getUserRoom(partnerId);
-
-    this.server.to(userRoomId).emit('conversation:new', conversationId);
-    this.server.to(partnerRoomId).emit('conversation:new', conversationId);
+    userIds.forEach((userId) => {
+      const userRoomId = this.getUserRoom(userId);
+      this.server.to(userRoomId).emit('conversation:new', { conversationId });
+    });
   }
 
   @OnEvent('message.created')

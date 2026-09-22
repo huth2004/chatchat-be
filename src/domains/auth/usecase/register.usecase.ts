@@ -45,6 +45,7 @@ export class RegisterUseCase {
     const newUser = await this.userRepository.create({
       username,
       password: hashedPassword,
+      avatarUrl: null,
       role: 'user',
     });
 

@@ -82,4 +82,19 @@ export class ConversationImplRepository implements ConversationRepository {
     conversations.splice(index, 1);
     return Promise.resolve(true);
   }
+
+  findAllByIds(
+    ids: string[],
+    type?: 'direct' | 'group',
+  ): Promise<Conversation[]> {
+    const filteredConversations = conversations.filter(
+      (conversation) =>
+        ids.includes(conversation.id) && (!type || conversation.type === type),
+    );
+    return Promise.resolve(
+      filteredConversations.map((conversation) =>
+        this.conversationMapper.toDomainEntity(conversation),
+      ),
+    );
+  }
 }

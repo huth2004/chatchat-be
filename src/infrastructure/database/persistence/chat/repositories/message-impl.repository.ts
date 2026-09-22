@@ -63,9 +63,7 @@ export class MessageImplRepository implements MessageRepository {
     return Promise.resolve(true);
   }
 
-  findLastMessageByConversationId(
-    conversationId: string,
-  ): Promise<Message | null> {
+  findLastByConversationId(conversationId: string): Promise<Message | null> {
     const conversationMessages = messages.filter(
       (message) => message.conversationId === conversationId,
     );
@@ -76,7 +74,7 @@ export class MessageImplRepository implements MessageRepository {
     return Promise.resolve(this.messageMapper.toDomainEntity(lastMessage));
   }
 
-  findAllMessagesByConversationId(conversationId: string): Promise<Message[]> {
+  findAllByConversationId(conversationId: string): Promise<Message[]> {
     const conversationMessages = messages.filter(
       (message) => message.conversationId === conversationId,
     );

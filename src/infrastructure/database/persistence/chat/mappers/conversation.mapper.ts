@@ -10,6 +10,8 @@ export class ConversationMapper implements BaseMapper<
     return {
       id: infraEntity.id,
       type: infraEntity.type,
+      name: infraEntity.name,
+      avatarUrl: infraEntity.avartarUrl,
       createdAt: infraEntity.createdAt,
       updatedAt: infraEntity.updatedAt,
       isDeleted: infraEntity.isDeleted,
@@ -20,6 +22,8 @@ export class ConversationMapper implements BaseMapper<
     return {
       id: domainEntity.id,
       type: domainEntity.type,
+      name: domainEntity.name,
+      avartarUrl: domainEntity.avatarUrl,
       createdAt: domainEntity.createdAt,
       updatedAt: domainEntity.updatedAt,
       isDeleted: domainEntity.isDeleted,

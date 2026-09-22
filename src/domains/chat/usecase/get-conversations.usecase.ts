@@ -1,9 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConversationRepository } from '@/infrastructure/database/persistence/chat/repositories/conversation.reposiory';
-import { DirectChatRepository } from '@/infrastructure/database/persistence/chat/repositories/direct-chat.repository';
+import { MemberRepository } from '@/infrastructure/database/persistence/chat/repositories/member.repository';
 import { MessageRepository } from '@/infrastructure/database/persistence/chat/repositories/message.reposiory';
 import { UserRepository } from '@/infrastructure/database/persistence/user/repositories/user.repository';
-import { DirectChat } from '@/domains/chat/entities/direct-chat.entity';
 import { ConversationItem } from '@/domains/chat/usecase/conversation-item.entity';
 import { LastMessage } from '@/domains/chat/usecase/last-message.entity';
 
@@ -16,8 +15,8 @@ export class GetConversationsUseCase {
   constructor(
     @Inject('CONVERSATION_REPOSITORY')
     private readonly conversationRepository: ConversationRepository,
-    @Inject('DIRECT_CHAT_REPOSITORY')
-    private readonly directChatRepository: DirectChatRepository,
+    @Inject('MEMBER_REPOSITORY')
+    private readonly memberRepository: MemberRepository,
     @Inject('MESSAGE_REPOSITORY')
     private readonly messageRepository: MessageRepository,
     @Inject('USER_REPOSITORY') private readonly userRepository: UserRepository,
@@ -25,26 +24,44 @@ export class GetConversationsUseCase {
 
   async execute(input: GetConversationsInput): Promise<ConversationItem[]> {
     const { userId } = input;
-    const directChats: DirectChat[] =
-      await this.directChatRepository.findAllByUserId(userId);
 
-    const conversationIds = directChats.map(
-      (directChat) => directChat.conversationId,
-    );
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    const userMembers = await this.memberRepository.findAllByUserId(userId);
+
+    const conversationIds = userMembers.map((member) => member.conversationId);
 
     const conversationItems: ConversationItem[] = await Promise.all(
       conversationIds.map(async (conversationId): Promise<ConversationItem> => {
-        let title: string = 'Unknown';
-        let avatarUrl: string | null = null;
-        let lastMessage: LastMessage | null = null;
-
         const conversationData =
           await this.conversationRepository.findById(conversationId);
 
-        const lastMessageData =
-          await this.messageRepository.findLastMessageByConversationId(
-            conversationId,
+        if (!conversationData) {
+          Logger.warn(
+            `Data anomaly: Conversation with ID ${conversationId} not found for user ${userId}`,
           );
+          return {
+            id: conversationId,
+            type: 'direct',
+            name: 'Deleted Conversation',
+            avatarUrl: null,
+            createdAt: new Date(),
+            updatedAt: null,
+            isDeleted: false,
+            deletedAt: null,
+            title: 'Deleted Conversation',
+            lastMessage: null,
+          };
+        }
+
+        let title: string;
+        let avatarUrl: string | null = conversationData.avatarUrl;
+        let lastMessage: LastMessage | null = null;
+
+        const lastMessageData =
+          await this.messageRepository.findLastByConversationId(conversationId);
 
         if (lastMessageData) {
           const sender = await this.userRepository.findById(
@@ -52,33 +69,52 @@ export class GetConversationsUseCase {
           );
           lastMessage = {
             senderId: lastMessageData.senderId,
-            senderName: sender ? sender.username : 'Unknown',
+            senderName: sender ? sender.username : 'Deleted User',
             content: lastMessageData.content,
             timestamp: lastMessageData.createdAt,
           };
         }
 
-        if (conversationData && conversationData.type === 'direct') {
-          const directChat = directChats.find(
-            (chat) => chat.conversationId === conversationId,
-          );
+        const members =
+          await this.memberRepository.findAllByConversationId(conversationId);
 
-          const partnerId =
-            directChat?.userId1 === userId
-              ? directChat.userId2
-              : directChat?.userId1;
+        const otherMemberIds = members
+          .filter((member) => member.userId !== userId)
+          .map((member) => member.userId);
 
-          const partner = await this.userRepository.findById(partnerId || '');
+        if (conversationData.type === 'direct') {
+          if (otherMemberIds.length !== 1) {
+            Logger.warn(
+              `Data anomaly: Expected 1 other member in direct conversation ${conversationId}, found ${otherMemberIds.length}`,
+            );
+          }
 
-          title = partner ? partner.username : 'Unknown';
-          avatarUrl = null;
+          const partner = await this.userRepository.findById(otherMemberIds[0]);
+
+          title = partner ? partner.username : 'Deleted User';
+          avatarUrl = partner ? partner.avatarUrl : null;
+        } else {
+          if (otherMemberIds.length < 2) {
+            Logger.warn(
+              `Data anomaly: Expected at least 2 other members in group conversation ${conversationId}, found ${otherMemberIds.length}`,
+            );
+          }
+
+          if (!conversationData.name) {
+            Logger.warn(
+              `Data anomaly: Group conversation ${conversationId} has no name`,
+            );
+            title = 'Unnamed Group';
+          } else {
+            title = conversationData.name;
+          }
         }
 
         return {
-          ...conversationData!,
-          title: title,
-          avatarUrl: avatarUrl,
-          lastMessage: lastMessage,
+          ...conversationData,
+          title,
+          avatarUrl,
+          lastMessage,
         };
       }),
     );

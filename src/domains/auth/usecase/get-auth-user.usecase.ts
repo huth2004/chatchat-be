@@ -23,7 +23,7 @@ export class GetAuthUserUseCase {
     return {
       id: user.id,
       username: user.username,
-      avatarUrl: null,
+      avatarUrl: user.avatarUrl,
       role: user.role,
     };
   }

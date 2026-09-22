@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConversationRepository } from '@/infrastructure/database/persistence/chat/repositories/conversation.reposiory';
-import { DirectChatRepository } from '@/infrastructure/database/persistence/chat/repositories/direct-chat.repository';
+import { MemberRepository } from '@/infrastructure/database/persistence/chat/repositories/member.repository';
 import { MessageRepository } from '@/infrastructure/database/persistence/chat/repositories/message.reposiory';
 import { Conversation } from '@/domains/chat/entities/conversation.entity';
 import { Message } from '@/domains/chat/entities/message.entity';
@@ -21,8 +21,8 @@ export class SendMessageUseCase {
     private readonly userRepository: UserRepository,
     @Inject('CONVERSATION_REPOSITORY')
     private readonly conversationRepository: ConversationRepository,
-    @Inject('DIRECT_CHAT_REPOSITORY')
-    private readonly directChatRepository: DirectChatRepository,
+    @Inject('MEMBER_REPOSITORY')
+    private readonly memberRepository: MemberRepository,
     @Inject('MESSAGE_REPOSITORY')
     private readonly messageRepository: MessageRepository,
     private readonly eventEmitter: EventEmitter2,
@@ -51,7 +51,7 @@ export class SendMessageUseCase {
     }
 
     const directChat =
-      await this.directChatRepository.findByUserIdAndConversationId(
+      await this.memberRepository.findByUserIdAndConversationId(
         userId,
         conversationId,
       );

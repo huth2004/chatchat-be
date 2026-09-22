@@ -21,7 +21,7 @@ export class SearchProfilesUseCase {
     return users.map((user): Profile => ({
       id: user.id,
       username: user.username,
-      avatarUrl: null,
+      avatarUrl: user.avatarUrl,
     }));
   }
 }

@@ -4,6 +4,7 @@ import {
   Get,
   Post,
   Param,
+  Query,
   Body,
   UseGuards,
 } from '@nestjs/common';
@@ -20,13 +21,13 @@ import {
   GetConversationInput,
 } from '@/domains/chat/usecase/get-conversation.usecase';
 import {
-  GetDirectConversationUseCase,
-  GetDirectConversationInput,
-} from '@/domains/chat/usecase/get-direct-conversation.usecase';
+  GetMessagesUseCase,
+  GetMessagesInput,
+} from '@/domains/chat/usecase/get-messages.usecase';
 import {
-  CreateDirectConversationUseCase,
-  CreateDirectConversationInput,
-} from '@/domains/chat/usecase/create-direct-conversation.usecase';
+  CreateConversationUseCase,
+  CreateConversationInput,
+} from '@/domains/chat/usecase/create-conversation.usecase';
 import {
   SendMessageUseCase,
   SendMessageInput,
@@ -37,8 +38,8 @@ export class ChatController {
   constructor(
     private readonly getConversationsUseCase: GetConversationsUseCase,
     private readonly getConversationUseCase: GetConversationUseCase,
-    private readonly getDirectConversationUseCase: GetDirectConversationUseCase,
-    private readonly createDirectConversationUseCase: CreateDirectConversationUseCase,
+    private readonly getMessagesUseCase: GetMessagesUseCase,
+    private readonly createDirectConversationUseCase: CreateConversationUseCase,
     private readonly sendDirectMessageUseCase: SendMessageUseCase,
   ) {}
 
@@ -70,52 +71,55 @@ export class ChatController {
   }
 
   @UseGuards(HttpAuthGuard)
-  @Get('conversations/direct/:conversationId')
-  async getDirectConversation(
+  @Get('messages/:conversationId')
+  async getMessages(
     @Req() req: AuthenticatedRequest,
     @Param('conversationId') conversationId: string,
+    @Query('cursor') cursor?: string,
   ) {
     const userId = req.user.userId;
-    const input: GetDirectConversationInput = {
+    const input: GetMessagesInput = {
       userId,
       conversationId,
+      limit: 10,
+      cursor,
     };
-    const conversation = await this.getDirectConversationUseCase.execute(input);
+    const result = await this.getMessagesUseCase.execute(input);
     return {
-      message: 'Direct conversation retrieved successfully',
-      data: conversation,
+      message: 'Messages retrieved successfully',
+      ...result,
     };
   }
 
   @UseGuards(HttpAuthGuard)
-  @Post('conversations/direct')
-  async createDirectConversation(
+  @Post('conversations')
+  async createConversation(
     @Req() req: AuthenticatedRequest,
-    @Body() body: { partnerId: string },
+    @Body() body: { otherUserIds: string[] },
   ) {
     const userId = req.user.userId;
-    const partnerId = body.partnerId;
+    const otherUserIds = body.otherUserIds;
 
-    if (!userId || !partnerId) {
-      throw new Error('User and partner are required.');
+    if (!userId || !otherUserIds || otherUserIds.length === 0) {
+      throw new Error('User and other users are required.');
     }
 
-    const input: CreateDirectConversationInput = {
+    const input: CreateConversationInput = {
       userId,
-      partnerId,
+      otherUserIds,
     };
 
     const conversation =
       await this.createDirectConversationUseCase.execute(input);
 
     return {
-      message: 'Direct conversation created successfully',
+      message: 'Conversation created successfully',
       data: conversation,
     };
   }
 
   @UseGuards(HttpAuthGuard)
-  @Post('conversations')
+  @Post('messages')
   async sendMessage(
     @Req() req: AuthenticatedRequest,
     @Body() body: { conversationId: string; content: string },
